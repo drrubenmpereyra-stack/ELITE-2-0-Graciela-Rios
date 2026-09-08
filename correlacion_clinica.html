@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Triangulación Clínica Integral | ELITE 2.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0891b2;
+            --secondary-color: #22d3ee;
+            --accent-bg: #ecfeff;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #334155;
+            --border-color: #cffafe;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); line-height: 1.5; padding: 20px; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 4px solid var(--primary-color); }
+        h2 { font-size: 1.2rem; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .form-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 20px; background: var(--accent-bg); padding: 15px; border-radius: 6px; border: 1px solid var(--border-color); }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--primary-color); }
+        select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; background: #fff; outline: none; }
+        
+        .triangulation-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .triangulation-grid { grid-template-columns: 1fr; } }
+        
+        .dimension-card { background: #f1f5f9; border-left: 4px solid var(--primary-color); padding: 15px; border-radius: 4px; font-size: 0.85rem; }
+        .dimension-title { font-weight: 700; color: var(--primary-color); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+        @media (max-width: 992px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+        .chart-box { background: #fff; padding: 15px; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .chart-title { font-size: 0.85rem; font-weight: 600; color: var(--primary-color); margin-bottom: 10px; text-align: center; }
+
+        /* Contenedor adaptado exactamente a la figura humana sin bandas vacías */
+        .human-map-container {
+            position: relative;
+            width: 180px;
+            margin: 0 auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+            line-height: 0; /* Elimina espacios de texto inferiores */
+        }
+        .human-map-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .marca-corporal {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: rgba(239, 68, 68, 0.9);
+            border: 2px solid #b91c1c;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; justify-content: center; }
+        .btn { background-color: var(--primary-color); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-success { background-color: #059669; }
+        .btn-warning { background-color: #d97706; }
+
+        .alert-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85rem; display: none; }
+        .output-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; margin-top: 15px; font-size: 0.9rem; display: none; }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <div class="card">
+            <h2><i class="fa-solid fa-network-wired"></i> Panel de Triangulación Clínica Integral (MNSA + Rúbricas)</h2>
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">
+                Cruce metódico segmentado estrictamente por el protocolo activo del paciente.
+            </p>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="select-patient"><i class="fa-solid fa-user"></i> Seleccionar Paciente en Seguimiento:</label>
+                    <select id="select-patient" onchange="cargarDatosTriangulacion()">
+                        <option value="">-- Seleccionar Paciente --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-tag"></i> Protocolo Activo:</label>
+                    <div id="protocolo-activo-badge" style="padding: 9px 12px; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600; color: #b91c1c;">Sin asignar</div>
+                </div>
+            </div>
+
+            <div id="alerta-riesgo" class="alert-box">
+                <i class="fa-solid fa-triangle-exclamation"></i> <strong>Alerta de Convergencia:</strong> Se detectaron picos somáticos críticos bajo el protocolo activo que requieren revisión del plan terapéutico.
+            </div>
+
+            <div class="triangulation-grid">
+                <div class="dimension-card">
+                    <div class="dimension-title"><i class="fa-solid fa-file-waveform"></i> 1. Evaluación Convergente</div>
+                    <div id="info-convergente" style="color: #475569;">Esperando selección de paciente...</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-title"><i class="fa-solid fa-shield-halved"></i> 2. Operatividad Defensiva</div>
+                    <div id="info-defensiva" style="color: #475569;">Esperando selección de paciente...</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-title"><i class="fa-solid fa-heart-pulse"></i> 3. Estado Interoceptivo (MNSA)</div>
+                    <div id="info-mnsa" style="color: #475569;">Esperando selección de paciente...</div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn" onclick="generarGraficoRadar()"><i class="fa-solid fa-chart-radar"></i> Graficar Correlación (Radar)</button>
+                <button class="btn btn-warning" onclick="generarOrientaciones()"><i class="fa-solid fa-lightbulb"></i> Generar Orientaciones Terapéuticas</button>
+                <button class="btn btn-success" onclick="exportarInformeFinal()"><i class="fa-solid fa-file-arrow-down"></i> Exportar e Informar a Base de Datos</button>
+            </div>
+
+            <!-- Sección de Salidas Dinámicas -->
+            <div id="seccion-orientaciones" class="output-box">
+                <h3 style="font-size: 0.95rem; color: var(--primary-color); margin-bottom: 8px;"><i class="fa-solid fa-stethoscope"></i> Orientaciones para el Plan Terapéutico:</h3>
+                <div id="texto-orientaciones" style="color: #334155;"></div>
+            </div>
+
+            <div id="seccion-informe" class="output-box" style="background: #ecfeff; border-color: #22d3ee;">
+                <h3 style="font-size: 0.95rem; color: var(--primary-color); margin-bottom: 8px;"><i class="fa-solid fa-file-lines"></i> Informe Final Generado y Almacenado:</h3>
+                <div id="texto-informe-final" style="color: #334155; white-space: pre-line; margin-bottom: 12px;"></div>
+                <div id="contenedor-mapa-somatico" style="text-align: center; margin-top: 10px;"></div>
+            </div>
+
+            <!-- Dashboard con human.jpg ajustado proporcionalmente al alto de la figura -->
+            <div class="dashboard-grid">
+                <div class="chart-box">
+                    <div class="chart-title">Quantum de Estrés vs Sueño</div>
+                    <canvas id="mnsaLineChart" style="width:100%; max-height:220px;"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Cartografía Corporal (human.jpg Proporcional)</div>
+                    <div id="humanMapWrapper" class="human-map-container">
+                        <img src="human.jpg" alt="Esquema Corporal Interactivo" onerror="this.onerror=null; this.src='https://via.placeholder.com/180x220?text=human.jpg+no+encontrada';">
+                    </div>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Correlación Multidimensional (Radar)</div>
+                    <canvas id="mnsaRadarChart" style="width:100%; max-height:220px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJietA0GuHsUpkN2-lk38Y3L6VDROxvZs",
+            authDomain: "materiales-terapeuticos.firebaseapp.com",
+            projectId: "materiales-terapeuticos",
+            storageBucket: "materiales-terapeuticos.firebasestorage.app",
+            messagingSenderId: "827133493876",
+            appId: "1:827133493876:web:7d51b4befe64e0f8dfc721"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let lineChartInstance = null;
+        let radarChartInstance = null;
+        let pacientesMap = new Map();
+        let pacienteActualId = null;
+        let datosTriangulacionCache = {};
+
+        async function initPacientes() {
+            const selectEl = document.getElementById('select-patient');
+            try {
+                const querySnapshot = await getDocs(collection(db, "patients"));
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    pacientesMap.set(docSnap.id, data);
+                    selectEl.innerHTML += `<option value="${docSnap.id}">${(data.name || data.nombre || "Sin Nombre").toUpperCase()}</option>`;
+                });
+            } catch (e) {
+                console.warn("Error al cargar pacientes:", e);
+            }
+        }
+
+        window.cargarDatosTriangulacion = function() {
+            pacienteActualId = document.getElementById('select-patient').value;
+            const badge = document.getElementById('protocolo-activo-badge');
+            
+            document.getElementById('seccion-orientaciones').style.display = 'none';
+            document.getElementById('seccion-informe').style.display = 'none';
+
+            if(!pacienteActualId) {
+                badge.textContent = "Sin asignar";
+                document.getElementById('info-convergente').textContent = "Esperando selección de paciente...";
+                document.getElementById('info-defensiva').textContent = "Esperando selección de paciente...";
+                document.getElementById('info-mnsa').textContent = "Esperando selección de paciente...";
+                limpiarMarcasHumanMap();
+                return;
+            }
+
+            const data = pacientesMap.get(pacienteActualId);
+            const admision = data.admision_protocolo;
+
+            if(!admision) {
+                badge.textContent = "Sin protocolo asignado";
+                document.getElementById('info-convergente').textContent = "No registra protocolo activo.";
+                document.getElementById('info-defensiva').textContent = "Sin datos defensivos bajo marco.";
+                document.getElementById('info-mnsa').textContent = "Sin registros.";
+                limpiarMarcasHumanMap();
+                return;
+            }
+
+            const protocoloActivo = admision.protocolo.toLowerCase(); 
+            badge.textContent = admision.protocolo.toUpperCase();
+
+            // 1. Evaluación Convergente
+            const evalData = data[`evaluacion_${protocoloActivo}`] || data[`eval_conv_${protocoloActivo}`] || data[`evaluacionConvergente`] || null;
+            let puntajeConvNum = 5;
+            let evalTextoLimpio = "Sin datos registrados";
+            if (evalData) {
+                let itemConv = Array.isArray(evalData) ? evalData[evalData.length - 1] : evalData;
+                const puntajeTxt = itemConv.puntaje || itemConv.resultado || itemConv.score || (itemConv.totalScore ? `Score: ${itemConv.totalScore}` : "Registrado");
+                const informeTxt = itemConv.informe || itemConv.comentario || itemConv.detalle || itemConv.observaciones || "Evaluación completada.";
+                
+                evalTextoLimpio = `Puntaje: ${puntajeTxt} | Observaciones: ${informeTxt}`;
+                document.getElementById('info-convergente').innerHTML = `<strong>Puntaje:</strong> ${puntajeTxt}<br><small>${informeTxt}</small>`;
+                
+                const txtL = String(puntajeTxt + " " + informeTxt).toLowerCase();
+                if(txtL.includes('alto') || txtL.includes('crítico')) puntajeConvNum = 8;
+                if(txtL.includes('bajo')) puntajeConvNum = 3;
+            } else {
+                document.getElementById('info-convergente').innerHTML = `<span style="color:#b91c1c;">Sin evaluación convergente registrada.</span>`;
+            }
+
+            // 2. Operatividad Defensiva
+            let defData = data[`defensiva_${protocoloActivo}`] || 
+                          data[`diagn_func_op_${protocoloActivo}`] || 
+                          data[`diagn_funcional_operativo_${protocoloActivo}`] || 
+                          data[`diagnosticoDefensivo`] || 
+                          data[`operatividadDefensiva`] ||
+                          null;
+
+            if (!defData) {
+                for (let key in data) {
+                    const k = key.toLowerCase();
+                    if (k.includes('defensiv') || k.includes('operatividad') || k.includes('diagn_func')) {
+                        if (data[key] !== null) {
+                            defData = data[key];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let puntajeDefNum = 5;
+            let defTextoLimpio = "Sin datos registrados";
+            if (defData) {
+                let itemDef = Array.isArray(defData) ? defData[defData.length - 1] : defData;
+                const estadoTxt = itemDef.estado || itemDef.diagnostico || itemDef.operatividad || itemDef.resultado || "Diagnóstico Registrado";
+                const mecanismoTxt = itemDef.mecanismo || itemDef.descripcion || itemDef.detalles || itemDef.informe || (itemDef.totalScore ? `Score Total: ${itemDef.totalScore}` : "Evaluación completada.");
+                
+                defTextoLimpio = `Estado: ${estadoTxt} | Detalle: ${mecanismoTxt}`;
+                document.getElementById('info-defensiva').innerHTML = `<strong>Estado:</strong> ${estadoTxt}<br><small>Mecanismo: ${mecanismoTxt}</small>`;
+                
+                const txtLower = String(estadoTxt + " " + mecanismoTxt).toLowerCase();
+                if(txtLower.includes('fracasada') || txtLower.includes('desbordada') || txtLower.includes('colapso')) puntajeDefNum = 9;
+                if(txtLower.includes('eficaz') || txtLower.includes('compensada')) puntajeDefNum = 2;
+            } else {
+                document.getElementById('info-defensiva').innerHTML = `<span style="color:#b91c1c;">Sin diagnóstico defensivo registrado.</span>`;
+            }
+
+            // 3. MNSA y búsqueda de cartografía corporal del paciente
+            const registros = data.mnsa_registros || [];
+            let promedioEstres = 0;
+            let ultimoRegistroMNSA = null;
+            if(registros.length > 0) {
+                registros.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                ultimoRegistroMNSA = registros[registros.length - 1];
+                const suma = registros.reduce((acc, curr) => acc + (Number(curr.quantumEstres) || 0), 0);
+                promedioEstres = Number((suma / registros.length).toFixed(1));
+            }
+            document.getElementById('info-mnsa').innerHTML = `<strong>Registros MNSA:</strong> ${registros.length} (Prom. Estrés: ${promedioEstres})<br><small>Sincronizado con protocolo ${admision.protocolo}.</small>`;
+
+            datosTriangulacionCache = {
+                protocolo: admision.protocolo,
+                evaluacionTexto: evalTextoLimpio,
+                defensivaTexto: defTextoLimpio,
+                registros: registros,
+                ultimoMNSA: ultimoRegistroMNSA,
+                metrics: { estres: promedioEstres, convergente: puntajeConvNum, defensiva: puntajeDefNum }
+            };
+
+            procesarYGraficarMNSA(registros);
+            renderizarMarcasHumanMap(ultimoRegistroMNSA);
+            generarGraficoRadar();
+        };
+
+        function procesarYGraficarMNSA(registros) {
+            if(registros.length === 0) {
+                document.getElementById('alerta-riesgo').style.display = 'none';
+                if(lineChartInstance) lineChartInstance.destroy();
+                return;
+            }
+
+            const fechas = [];
+            const estresData = [];
+            const suenoData = [];
+            let hayAlerta = false;
+
+            registros.forEach(reg => {
+                fechas.push(reg.fecha);
+                estresData.push(reg.quantumEstres);
+                suenoData.push(reg.calidadSueno);
+
+                if(reg.quantumEstres >= 8 || (reg.marcasSomaticas && reg.marcasSomaticas.length >= 3)) {
+                    hayAlerta = true;
+                }
+            });
+
+            document.getElementById('alerta-riesgo').style.display = hayAlerta ? 'block' : 'none';
+
+            const ctxLine = document.getElementById('mnsaLineChart').getContext('2d');
+            if(lineChartInstance) lineChartInstance.destroy();
+
+            lineChartInstance = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: fechas,
+                    datasets: [
+                        { label: 'Quantum de Estrés', data: estresData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 2, tension: 0.2 },
+                        { label: 'Calidad de Sueño', data: suenoData, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.1)', borderWidth: 2, tension: 0.2 }
+                    ]
+                },
+                options: { responsive: true, scales: { y: { min: 0, max: 10 } } }
+            });
+        }
+
+        // --- MAPEO ANATÓMICO CON LAS COORDENADAS EXACTAS DE LA APP DEL PACIENTE ---
+        function renderizarMarcasHumanMap(registro) {
+            const wrapper = document.getElementById('humanMapWrapper');
+            wrapper.innerHTML = `<img src="human.jpg" alt="Esquema Corporal Interactivo" onerror="this.onerror=null; this.src='https://via.placeholder.com/180x220?text=human.jpg+no+encontrada';">`;
+
+            const mapaCoordenadasExactas = {
+                // Vista Frontal (Izquierda)
+                'Cefalea / Presión Cefálica (Frontal)': {top: '13%', left: '26%'},
+                'Cabeza / Cefalea': {top: '13%', left: '26%'},
+                'Nudo en la Garganta / Cuello': {top: '20%', left: '26%'},
+                'Garganta / Cuello': {top: '20%', left: '26%'},
+                'Opresión en el Pecho / Taquicardia': {top: '27%', left: '26%'},
+                'Pecho / Corazón': {top: '27%', left: '26%'},
+                'Molestia Estomacal / Visceral': {top: '36%', left: '26%'},
+                'Abdomen / Estómago': {top: '36%', left: '26%'},
+                'Tensión en Hombro Izquierdo': {top: '24%', left: '19%'},
+                'Hombro Izquierdo': {top: '24%', left: '19%'},
+                'Tensión en Hombro Derecho': {top: '24%', left: '33%'},
+                'Hombro Derecho': {top: '24%', left: '33%'},
+
+                // Vista Posterior (Derecha)
+                'Cefalea Tensional / Occipital': {top: '13%', left: '74%'},
+                'Cabeza Posterior': {top: '13%', left: '74%'},
+                'Tensión Cervical Posterior': {top: '21%', left: '74%'},
+                'Cervical': {top: '21%', left: '74%'},
+                'Dolor Lumbar / Dorsal': {top: '30%', left: '74%'},
+                'Espalda / Lumbar': {top: '30%', left: '74%'},
+                'Fatiga en Extremidades Inferiores': {top: '48%', left: '74%'},
+                'Zona Glútea / Cadera': {top: '48%', left: '74%'}
+            };
+
+            if (registro && registro.marcasSomaticas && registro.marcasSomaticas.length > 0) {
+                registro.marcasSomaticas.forEach(marca => {
+                    let pos = mapaCoordenadasExactas[marca];
+                    
+                    if (!pos) {
+                        for (let clave in mapaCoordenadasExactas) {
+                            if (marca.toLowerCase().includes(clave.toLowerCase()) || clave.toLowerCase().includes(marca.toLowerCase())) {
+                                pos = mapaCoordenadasExactas[clave];
+                                break;
+                            }
+                        }
+                    }
+
+                    if (pos) {
+                        const dot = document.createElement('div');
+                        dot.className = 'marca-corporal';
+                        dot.style.top = pos.top;
+                        dot.style.left = pos.left;
+                        dot.title = marca;
+                        wrapper.appendChild(dot);
+                    }
+                });
+            }
+        }
+
+        function limpiarMarcasHumanMap() {
+            const wrapper = document.getElementById('humanMapWrapper');
+            wrapper.innerHTML = `<img src="human.jpg" alt="Esquema Corporal Interactivo" onerror="this.onerror=null; this.src='https://via.placeholder.com/180x220?text=human.jpg+no+encontrada';">`;
+        }
+
+        // Gráfico de Radar
+        window.generarGraficoRadar = function() {
+            if(!pacienteActualId || !datosTriangulacionCache.metrics) {
+                return;
+            }
+
+            const m = datosTriangulacionCache.metrics;
+            const ctxRadar = document.getElementById('mnsaRadarChart').getContext('2d');
+            if(radarChartInstance) radarChartInstance.destroy();
+
+            radarChartInstance = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['Quantum Estrés MNSA', 'Afectación Convergente', 'Claudicación Defensiva'],
+                    datasets: [{
+                        label: `Protocolo ${datosTriangulacionCache.protocolo}`,
+                        data: [m.estres, m.convergente, m.defensiva],
+                        backgroundColor: 'rgba(8, 145, 178, 0.2)',
+                        borderColor: '#0891b2',
+                        pointBackgroundColor: '#0284c7',
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, scales: { r: { min: 0, max: 10 } } }
+            });
+        };
+
+        // Generar Orientaciones Terapéuticas
+        window.generarOrientaciones = function() {
+            if(!pacienteActualId || !datosTriangulacionCache.metrics) {
+                alert("Seleccione un paciente activo.");
+                return;
+            }
+
+            const m = datosTriangulacionCache.metrics;
+            let sugerencia = "";
+
+            if (m.estres >= 7 && m.defensiva >= 7) {
+                sugerencia = "<strong>ALERTA MÁXIMA DE DESBORDE:</strong> El quantum somático es elevado y la operatividad defensiva muestra claudicación severa. Se recomienda intervención activa de contención inmediata, ajuste transitorio de la frecuencia de sesiones y revisión conjunta con psiquiatría.";
+            } else if (m.estres >= 6) {
+                sugerencia = "<strong>ESTRÉS SOMÁTICO SOSTENIDO:</strong> Las defensas operan pero el cuerpo registra alta afectación interoceptiva. Focalizar la sesión en la elaboración simbólica de los desencadenantes cotidianos sin sobreintervenir en el encuadre.";
+            } else {
+                sugerencia = "<strong>ESTABILIDAD RELATIVA:</strong> Indicadores somáticos y defensivos dentro de parámetros de contención. Mantener el encuadre actual y afianzar los recursos elaborativos del paciente.";
+            }
+
+            document.getElementById('texto-orientaciones').innerHTML = sugerencia;
+            document.getElementById('seccion-orientaciones').style.display = 'block';
+        };
+
+        // Exportar Informe Final y Guardar en BD
+        window.exportarInformeFinal = async function() {
+            if(!pacienteActualId || !datosTriangulacionCache.protocolo) {
+                alert("Seleccione un paciente con protocolo activo.");
+                return;
+            }
+
+            const c = datosTriangulacionCache;
+            const fechaHoy = new Date().toLocaleDateString();
+            const protocoloNombre = c.protocolo;
+            const ultimoMNSA = c.ultimoMNSA;
+
+            let marcasTexto = "Sin marcas somáticas registradas";
+            if (ultimoMNSA && ultimoMNSA.marcasSomaticas && ultimoMNSA.marcasSomaticas.length > 0) {
+                marcasTexto = ultimoMNSA.marcasSomaticas.join(", ");
+            }
+
+            const textoInforme = `INFORME FINAL - PROTOCOLO DE ${protocoloNombre.toUpperCase()}
+Fecha de Emisión: ${fechaHoy}
+--------------------------------------------------
+1. EVALUACIÓN CONVERGENTE: ${c.evaluacionTexto}
+2. OPERATIVIDAD DEFENSIVA: ${c.defensivaTexto}
+3. ESTADO INTEROCEPTIVO (MNSA): Total registros: ${c.registros.length}, Promedio Estrés: ${c.metrics.estres}/10
+- Localizaciones / Marcas Somáticas: ${marcasTexto}
+--------------------------------------------------
+CONCLUSIÓN CLÍNICA: Triangulación completada bajo estricto aislamiento de protocolo. Datos validados para historia clínica.`;
+
+            document.getElementById('texto-informe-final').textContent = textoInforme;
+            document.getElementById('contenedor-mapa-somatico').innerHTML = `<br><strong>Cartografía Corporal:</strong><br><img src="human.jpg" alt="Esquema Corporal Interactivo" style="max-width:140px; border:1px solid #cbd5e1; border-radius:6px; margin-top:8px;">`;
+            document.getElementById('seccion-informe').style.display = 'block';
+
+            const claveInforme = `informe_final_${protocoloNombre.toLowerCase()}`;
+            try {
+                const ref = doc(db, "patients", pacienteActualId);
+                await updateDoc(ref, {
+                    [claveInforme]: {
+                        fecha: fechaHoy,
+                        contenido: textoInforme,
+                        metricas: c.metrics
+                    }
+                });
+                alert(`¡Informe Final "${protocoloNombre}" guardado exitosamente en la base de datos!`);
+            } catch (e) {
+                console.error("Error al guardar informe:", e);
+                alert("Error al guardar el informe final en Firestore.");
+            }
+        };
+
+        initPacientes();
+    </script>
+</body>
+</html>
