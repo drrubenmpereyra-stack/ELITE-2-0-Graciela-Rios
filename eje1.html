@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica - Eje 1: Foco (Fiorini) | ELITE 2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1e3a8a;
+            --secondary-color: #0d9488;
+            --hc-sesiones: #059669;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #334155;
+            --border-color: #cbd5e1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); line-height: 1.5; padding: 20px; }
+
+        .container { max-width: 1300px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { font-size: 1.2rem; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--primary-color); }
+        input, select, textarea { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.9rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--hc-sesiones); }
+        textarea { resize: vertical; min-height: 70px; }
+
+        .btn { background-color: var(--hc-sesiones); color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn:hover { background-color: #047857; }
+        .btn-evaluar { background-color: #2563eb; margin-left: 10px; }
+        .btn-evaluar:hover { background-color: #1d4ed8; }
+        .btn-blue { background-color: #2563eb; color: white; }
+        .btn-blue:hover { background-color: #1d4ed8; }
+
+        /* Contenedor de la Imagen con Capa Superpuesta */
+        .schema-overlay-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .schema-overlay-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Burbujas de texto flotantes sobre la imagen según las coordenadas solicitadas */
+        .overlay-box {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px dashed var(--primary-color);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            color: #1e293b;
+            max-width: 220px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            pointer-events: none;
+            display: none;
+            word-break: break-word;
+        }
+        .overlay-box strong {
+            display: block;
+            color: var(--primary-color);
+            font-size: 0.7rem;
+            border-bottom: 1px solid #cbd5e1;
+            margin-bottom: 2px;
+        }
+
+        /* Coordenadas personalizadas */
+        #box-sec-1 { top: 50%; left: 10%; }
+        #box-sec-2 { top: 20%; left: 10%; }
+        #box-sec-3 { top: 40%; left: 50%; }
+        #box-sec-4 { top: 50%; right: 20%; left: auto; }
+        #box-sec-5 { top: 50%; right: 2%; left: auto; }
+        #box-sec-6 { top: 20%; right: 25%; left: auto; }
+        #box-sec-7 { top: 70%; left: 50%; }
+
+        .foco-card { background: #f8fafc; border-left: 4px solid var(--hc-sesiones); padding: 15px; border-radius: 6px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <div class="card" style="border-top: 4px solid var(--hc-sesiones);">
+            <h2><i class="fa-solid fa-user-injured"></i> Seleccionar Paciente</h2>
+            <div class="form-group">
+                <label for="foco-patient">Paciente Activo</label>
+                <select id="foco-patient" onchange="loadPatientFocos()">
+                    <option value="">-- Seleccione un paciente --</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="foco-form-card" class="card" style="display: none;">
+            <h2><i class="fa-solid fa-bullseye"></i> Eje 1: Foco (Modelo Fiorini)</h2>
+            
+            <form id="foco-form">
+                <div class="form-grid" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="foco-titulo">Título del Foco / Identificador</label>
+                        <input type="text" id="foco-titulo" required value="Foco Terapéutico N° 1" placeholder="Ej. Foco Inicial">
+                    </div>
+                    <div class="form-group">
+                        <label for="foco-fecha">Fecha de Registro</label>
+                        <input type="date" id="foco-fecha" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>1- Motivo de consulta y conflicto nuclear</label>
+                        <textarea id="foco-1" placeholder="Motivo explícito / Inconsciente..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>2- Situación actual estructurada a partir de un eje</label>
+                        <textarea id="foco-2" placeholder="Breve hipótesis clínica..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>3- Situación grupal</label>
+                        <textarea id="foco-3" placeholder="Dinamismos, conflictos, roles, recuerdos..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>4- Aspectos caracterológicos individuales</label>
+                        <textarea id="foco-4" placeholder="Psicodinamismos, defensas, recursos..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>5- Determinantes del contexto social más amplio</label>
+                        <textarea id="foco-5" placeholder="Económicos, sociales, culturales..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>6- Aspectos histórico genéticos</label>
+                        <textarea id="foco-6" placeholder="Individuales, grupales, sociales..." oninput="updateLiveSchema()"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>7- Momento evolutivo</label>
+                    <textarea id="foco-7" placeholder="Individual, grupal, social..." oninput="updateLiveSchema()"></textarea>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="margin-bottom: 8px; display: block;"><i class="fa-solid fa-eye"></i> Vista Previa Superpuesta sobre el Esquema:</label>
+                    
+                    <!-- Contenedor con la imagen de fondo y las capas de texto posicionadas -->
+                    <div class="schema-overlay-wrapper" id="schema-canvas-wrapper">
+                        <img src="Fiorini foco vacio.jpeg" alt="Esquema Foco Fiorini">
+                        
+                        <div id="box-sec-1" class="overlay-box"><strong>1. Conflicto Nuclear</strong><span class="content">--</span></div>
+                        <div id="box-sec-2" class="overlay-box"><strong>2. Situación Actual</strong><span class="content">--</span></div>
+                        <div id="box-sec-3" class="overlay-box"><strong>3. Situación Grupal</strong><span class="content">--</span></div>
+                        <div id="box-sec-4" class="overlay-box"><strong>4. Caracterología</strong><span class="content">--</span></div>
+                        <div id="box-sec-5" class="overlay-box"><strong>5. Contexto Social</strong><span class="content">--</span></div>
+                        <div id="box-sec-6" class="overlay-box"><strong>6. Histórico Genético</strong><span class="content">--</span></div>
+                        <div id="box-sec-7" class="overlay-box"><strong>7. Momento Evolutivo</strong><span class="content">--</span></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="submit" class="btn" style="flex: 1;"><i class="fa-solid fa-floppy-disk"></i> Guardar Foco en la Nube</button>
+                    <button type="button" class="btn btn-blue" onclick="conformarInformeImagenFoco()"><i class="fa-solid fa-file-waveform"></i> Conformar Informe</button>
+                    <button type="button" class="btn btn-evaluar" onclick="abrirEvaluacionFoco()"><i class="fa-solid fa-calculator"></i> Evaluar el foco obtener puntaje</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="focos-history-card" class="card" style="display: none;">
+            <h2><i class="fa-solid fa-folder-open"></i> Historial de Focos Registrados</h2>
+            <div id="focos-container">
+                <p style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 15px;">Seleccione un paciente para ver sus registros de foco.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Librería html2canvas para capturar la imagen superpuesta -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJietA0GuHsUpkN2-lk38Y3L6VDROxvZs",
+            authDomain: "materiales-terapeuticos.firebaseapp.com",
+            projectId: "materiales-terapeuticos",
+            storageBucket: "materiales-terapeuticos.firebasestorage.app",
+            messagingSenderId: "827133493876",
+            appId: "1:827133493876:web:7d51b4befe64e0f8dfc721"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let activePatientId = null;
+        let activePatientName = "";
+
+        const labelsMap = {
+            1: "1- Motivo de consulta y conflicto nuclear",
+            2: "2- Situación actual estructurada a partir de un eje",
+            3: "3- Situación grupal",
+            4: "4- Aspectos caracterológicos individuales",
+            5: "5- Determinantes del contexto social más amplio",
+            6: "6- Aspectos histórico genéticos",
+            7: "7- Momento evolutivo"
+        };
+
+        async function initEjes() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "patients"));
+                const selectEl = document.getElementById('foco-patient');
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const opt = document.createElement('option');
+                    opt.value = docSnap.id;
+                    opt.textContent = data.name || data.nombre || `Paciente (${docSnap.id})`;
+                    selectEl.appendChild(opt);
+                });
+            } catch (error) {
+                console.error("Error al cargar pacientes:", error);
+            }
+        }
+
+        window.loadPatientFocos = async function() {
+            activePatientId = document.getElementById('foco-patient').value;
+            const formCard = document.getElementById('foco-form-card');
+            const historyCard = document.getElementById('focos-history-card');
+
+            if (!activePatientId) {
+                formCard.style.display = 'none';
+                historyCard.style.display = 'none';
+                return;
+            }
+
+            try {
+                const ref = doc(db, "patients", activePatientId);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    activePatientName = data.name || data.nombre || "Paciente";
+                }
+            } catch (e) {
+                console.error("Error al obtener paciente:", e);
+            }
+
+            formCard.style.display = 'block';
+            historyCard.style.display = 'block';
+            document.getElementById('foco-fecha').valueAsDate = new Date();
+            updateLiveSchema();
+            renderFocosHistory();
+        }
+
+        window.abrirEvaluacionFoco = function() {
+            if (!activePatientId) {
+                alert("Por favor, seleccione un paciente activo antes de evaluar el foco.");
+                return;
+            }
+            window.open(`puntuacion_foco.html?patientId=${activePatientId}`, '_blank');
+        }
+
+        window.updateLiveSchema = function() {
+            for (let i = 1; i <= 7; i++) {
+                const val = document.getElementById(`foco-${i}`).value.trim();
+                const box = document.getElementById(`box-sec-${i}`);
+                const spanContent = box.querySelector('.content');
+
+                if (val) {
+                    spanContent.innerText = val;
+                    box.style.display = 'block';
+                } else {
+                    box.style.display = 'none';
+                }
+            }
+        }
+
+        window.conformarInformeImagenFoco = async function() {
+            if (!activePatientId) {
+                alert("Seleccione un paciente primero.");
+                return;
+            }
+
+            const tituloFoco = document.getElementById('foco-titulo').value.trim();
+            const fechaFoco = document.getElementById('foco-fecha').value;
+
+            // Capturar la imagen completa con los cuadros de texto superpuestos usando html2canvas
+            let imageBase64 = "";
+            try {
+                const wrapperEl = document.getElementById('schema-canvas-wrapper');
+                const canvas = await html2canvas(wrapperEl, { scale: 1, useCORS: true });
+                imageBase64 = canvas.toDataURL("image/png");
+            } catch (err) {
+                console.error("Error al capturar la imagen de foco:", err);
+            }
+
+            let detalleTexto = `--- IDENTIFICACIÓN DEL FOCO ---\n`;
+            detalleTexto += `• Título: ${tituloFoco}\n• Fecha: ${fechaFoco}\n\n`;
+            detalleTexto += `--- CONTENIDO DE LOS SECTORES ---\n`;
+            for (let i = 1; i <= 7; i++) {
+                const val = document.getElementById(`foco-${i}`).value.trim();
+                if (val) {
+                    detalleTexto += `• ${labelsMap[i]}: ${val}\n`;
+                }
+            }
+            if (imageBase64) {
+                detalleTexto += `\n[IMAGEN ESQUEMÁTICA CON TEXTOS SUPERPUESTOS ALMACENADA]`;
+            }
+
+            const nuevoInforme = {
+                titulo: `Informe Imagen de Foco - ${tituloFoco}`,
+                tipo: "Informe Imagen de Foco",
+                fecha: serverTimestamp(),
+                detalle: detalleTexto,
+                resumen: `Esquema gráfico de Foco Terapéutico (Eje 1) de ${activePatientName} con textos superpuestos.`,
+                imagenGrafico: imageBase64
+            };
+
+            try {
+                await addDoc(collection(db, "patients", activePatientId, "informes_medicos"), nuevoInforme);
+                alert("¡Informe 'Informe Imagen de Foco' conformado y guardado en la base de datos para ser recuperado desde el visualizador!");
+            } catch (error) {
+                console.error("Error al guardar el informe en la base de datos:", error);
+                alert("Ocurrió un error al guardar el informe.");
+            }
+        };
+
+        async function renderFocosHistory() {
+            const container = document.getElementById('focos-container');
+            container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem; text-align: center;">Cargando focos...</p>';
+
+            try {
+                const patientRef = doc(db, "patients", activePatientId);
+                const patientSnap = await getDoc(patientRef);
+                
+                if (patientSnap.exists()) {
+                    const data = patientSnap.data();
+                    const focos = data.focosEje1 || [];
+                    
+                    container.innerHTML = '';
+                    if (focos.length === 0) {
+                        container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 15px;">No hay esquemas de foco registrados para este paciente.</p>';
+                        return;
+                    }
+
+                    focos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+                    focos.forEach(f => {
+                        let itemsHtml = '';
+                        for (let i = 1; i <= 7; i++) {
+                            if (f.datos[i]) {
+                                itemsHtml += `<p style="font-size: 0.85rem; margin-bottom: 4px;"><strong>${labelsMap[i]}:</strong> ${f.datos[i]}</p>`;
+                            }
+                        }
+
+                        const div = document.createElement('div');
+                        div.className = 'foco-card';
+                        div.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                                <strong><i class="fa-solid fa-bullseye"></i> ${f.titulo}</strong>
+                                <span style="font-size: 0.8rem; color: #64748b;">Fecha: ${f.fecha}</span>
+                            </div>
+                            ${itemsHtml}
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error("Error al renderizar historial de focos:", error);
+            }
+        }
+
+        document.getElementById('foco-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!activePatientId) return;
+
+            const datosFoco = {};
+            for (let i = 1; i <= 7; i++) {
+                datosFoco[i] = document.getElementById(`foco-${i}`).value.trim();
+            }
+
+            const nuevoFoco = {
+                id: Date.now().toString(),
+                titulo: document.getElementById('foco-titulo').value.trim(),
+                fecha: document.getElementById('foco-fecha').value,
+                datos: datosFoco
+            };
+
+            try {
+                const patientRef = doc(db, "patients", activePatientId);
+                const patientSnap = await getDoc(patientRef);
+                let focos = patientSnap.data().focosEje1 || [];
+                focos.push(nuevoFoco);
+
+                await updateDoc(patientRef, { focosEje1: focos });
+                document.getElementById('foco-form').reset();
+                document.getElementById('foco-titulo').value = 'Foco Terapéutico N° 1';
+                document.getElementById('foco-fecha').valueAsDate = new Date();
+                updateLiveSchema();
+                alert('¡Esquema de Foco guardado con éxito en la nube!');
+                renderFocosHistory();
+            } catch (error) {
+                console.error("Error al guardar foco:", error);
+                alert("Error al registrar el esquema de foco.");
+            }
+        });
+
+        initEjes();
+    </script>
+</body>
+</html>
